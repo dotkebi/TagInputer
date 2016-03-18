@@ -1,48 +1,34 @@
 package com.github.dotkebi.taginput;
 
 import android.content.Context;
-import android.content.res.TypedArray;
 import android.graphics.Rect;
-import android.nfc.Tag;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.text.Editable;
-import android.text.InputFilter;
-import android.text.InputType;
-import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.text.method.DigitsKeyListener;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
-import java.math.BigDecimal;
-import java.util.regex.Pattern;
 
 /**
  * EditText with TagInput
  * @author by dotkebi@gmail.com on 2016-03-12.
  */
 public class TagInput extends EditText {
-    private static final int REMOVE_COMMA = 7463;
-    private static final int SET_COMMA = 7462;
-    private static final int BRING_CURSOR_TO_LAST_POSITION = 7461;
+    private static final int SET_SHARP = 7462;
     private static final int REMOVE_FIRST_CHAR_AT_CURSOR_POSITION = 7460;
-    private static final int HIDE_KEYBOARD = 7459;
 
     private static final long KEY_INTERVAL = 50;
 
-    private static final char period = '.';
-    private static final char dash = '-';
+    private static final char SHARP = '#';
 
-    private EditDigitsHandler handler;
-
-    private Context context;
+    private TagInputHandler handler;
 
     private int previousCursorPosition;
     private int quantityOfPeriodBeforeCursor;
@@ -82,39 +68,21 @@ public class TagInput extends EditText {
     }
 
     private void init(Context context) {
-        this.context = context;
-        blockSoftKey = false;
-        //blockHardKey = false;
+        //this.context = context;
         hasFocus = false;
 
-        handler = new EditDigitsHandler(this);
-
-        setFilters(new InputFilter[]{filterNumberMinus});
-        setKeyListener(DigitsKeyListener.getInstance("0123456789,.-"));
-        if (formatWhileInput) {
-            addTextChangedListener(new DigitsWatcher());
-        }
+        handler = new TagInputHandler(this);
+        addTextChangedListener(new TagWatcher());
     }
 
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
         final int action = event.getActionMasked();
-
         if (action == MotionEvent.ACTION_DOWN && !hasFocus) {
             /*hasFocus = true;
             handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);*/
-            initRequestFocus();
-        }
-        if (autoHideKeyboard) {
-            handler.sendEmptyMessage(HIDE_KEYBOARD);
         }
         return super.onTouchEvent(event);
-    }
-
-    public boolean initRequestFocus() {
-        hasFocus = true;
-        handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);
-        return super.requestFocus();
     }
 
     @Override
@@ -123,17 +91,12 @@ public class TagInput extends EditText {
             hasFocus = false;
             doAfterChanged(getText());
         }
-        if (!formatWhileInput && focused) {
-            hasFocus = true;
-            handler.sendEmptyMessage(REMOVE_COMMA);
-            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);
-        }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
 
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DEL && formatWhileInput) {
+        if (keyCode == KeyEvent.KEYCODE_DEL) {
             removeFirstCharAtCursorPosition();
             return true;
         }
@@ -146,34 +109,6 @@ public class TagInput extends EditText {
 
     public void setValue(int value) {
         doAfterChanged(String.valueOf(value));
-    }
-
-    public double getValue() {
-        String str = getText().toString().replaceAll(",", "");
-
-        if (TextUtils.isEmpty(str)) {
-            return 0;
-        }
-
-        String front;
-        String end;
-        int firstIndex = str.indexOf(period);
-        if (firstIndex == -1) {
-            front = str;
-            end = "";
-        } else {
-            front = str.substring(0, firstIndex);
-            end = str.substring(firstIndex + 1, str.length());
-        }
-
-        int size = end.length();
-        String value = front + end;
-        return Double.valueOf(value) / Math.pow(10, size);
-    }
-
-    private void hideKeyboard() {
-        InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(this.getWindowToken(), 0);
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -197,81 +132,59 @@ public class TagInput extends EditText {
         }
 
         --previousCursorPosition;
-        if (text.charAt(startPosition) == ','
-                || text.charAt(startPosition) == '.') {
+        if (text.charAt(startPosition) == SHARP) {
             --startPosition;
-            --previousCursorPosition;
+            //--previousCursorPosition;
         }
 
         String front = text.substring(0, startPosition);
         String end = text.substring(endPosition, text.length());
 
-        sendSetText(front + end);
+        String message = front + end;
+        sendSetText(message);
     }
 
     private void sendSetText(String value) {
-        handler.sendMessage(Message.obtain(handler, SET_COMMA, value));
+        String str = value.replaceAll(String.valueOf(SHARP), "");
+        if (TextUtils.isEmpty(str)) {
+            clearText();
+            return;
+        }
+        handler.sendMessage(Message.obtain(handler, SET_SHARP, str));
     }
 
-    private void bringCursorToLastPosition() {
-        setCursorVisible(false);
-        setSelection(getText().length());
-        setCursorVisible(true);
-        blockSoftKey = false;
-    }
-
-    private void removeComma() {
-        String value = getText().toString().replaceAll(",", "");
-        setText(value);
-    }
-
-    private void doSetText(String value) {
+    private void setSharp(String value) {
         blockSoftKey = true;
-        boolean minus = false;
         setCursorVisible(false);
         try {
             if (TextUtils.isEmpty(value)) {
                 return;
             }
-            value = value.replaceAll(",", "");
-            if (value.charAt(0) == dash) {
-                minus = true;
-                value = value.substring(1, value.length());
-            }
-
-            final int dotPos = value.indexOf('.');
-            String value1, value2;
-            if (dotPos >= 0) {
-                value1 = value.substring(0, dotPos);
-                value2 = value.substring(dotPos, value.length());
-            } else {
-                value1 = value;
-                value2 = "";
-            }
-
-            final String retTxt = value1;
-            final int index = retTxt.length() - 1;
+            final int index = value.length();
 
             StringBuilder sb = new StringBuilder();
-            int dotIndex = 0;
 
-            for (int i = index; i >= 0; i--, dotIndex++) {
-                char ch = retTxt.charAt(i);
-                if (dotIndex % 3 == 0 && i < index) {
-                    sb.append(',');
+            sb.append(SHARP);
+            ++previousCursorPosition;
+            for (int i = 0; i < index; i++) {
+                char ch = value.charAt(i);
+                sb.append(ch);
+                if (ch == ' ') {
+                    sb.append(SHARP);
                     ++previousCursorPosition;
                 }
-                sb.append(ch);
             }
             clearText();
-            String msg = ((minus) ? dash : "") + sb.reverse().toString() + value2;
+            String msg = sb.toString();
             setText(msg);
 
-            previousCursorPosition = previousCursorPosition - quantityOfPeriodBeforeCursor;
+            Log.w("before", quantityOfPeriodBeforeCursor + " / " + previousCursorPosition);
+            previousCursorPosition -= quantityOfPeriodBeforeCursor;
             if (previousCursorPosition < 0) {
                 previousCursorPosition = 0;
             }
             quantityOfPeriodBeforeCursor = 0;
+            Log.w("cursor", "" + previousCursorPosition);
             setSelection(previousCursorPosition);
         } catch (NumberFormatException e) {
             e.printStackTrace();
@@ -283,8 +196,9 @@ public class TagInput extends EditText {
 
     public void clearText() {
         if (getText().length() > 0) {
-            setSelection(0);
             getText().clear();
+            setText(String.valueOf(SHARP));
+            setSelection(1);
         }
     }
 
@@ -298,94 +212,21 @@ public class TagInput extends EditText {
         }
 
         recordCursorPosition(source);
-        String str = source.replaceAll(",", "");
-        if (TextUtils.isEmpty(str)) {
-            clearText();
-            return;
-        }
-
-        int firstIndex = str.indexOf(period);
-        if (firstIndex == 0) {
-            sendSetText("0.");
-            return;
-        }
-
-        if (source.startsWith("00") && source.length() == 2) {
-            previousCursorPosition = 1;
-            sendSetText("0");
-            return;
-        } else if (source.startsWith("0")
-                && source.length() == 2) {
-            if (source.charAt(1) != period
-                    && '0' <= source.charAt(1)
-                    && source.charAt(1) <= '9'
-                    )
-                --previousCursorPosition;
-        }
-
-        String front;
-        String end;
-
-        if (firstIndex > -1) {
-            int lastIndex = str.lastIndexOf(period);
-            if (str.indexOf(period) != lastIndex) {
-                front = str.substring(0, lastIndex);
-                end = str.substring(lastIndex + 1, str.length());
-                str = front + end;
-                --previousCursorPosition;
-            }
-            front = str.substring(0, firstIndex);
-            end = str.substring(firstIndex, str.length());
-
-            if (front.length() > 10) {
-                String front1 = str.substring(0, 10);
-                String front2 = str.substring(10, str.length());
-
-                headTrim(front1, front2 + end);
-                return;
-            } else {
-                headTrim(front, end);
-                return;
-            }
-        }
-        if (str.length() > 10) {
-            front = str.substring(0, 10);
-            end = str.substring(10, str.length());
-        } else {
-            front = str;
-            end = "";
-        }
-        headTrim(front, end);
+        sendSetText(source);
     }
 
     private void recordCursorPosition(String s) {
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) == ',') {
+        quantityOfPeriodBeforeCursor = 0;
+        for (int i = 0; i < getSelectionStart(); i++) {
+        //for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) == SHARP) {
                 quantityOfPeriodBeforeCursor++;
             }
         }
         previousCursorPosition = getSelectionStart();
     }
 
-    private void headTrim(String front, String end) {
-        boolean minus = false;
-        if (front.length() > 0 && front.charAt(0) == dash) {
-            minus = true;
-            front = front.replaceAll(String.valueOf(dash), "");
-        }
-
-        if (TextUtils.isEmpty(front)) {
-            sendSetText(String.valueOf(dash));
-            return;
-        }
-
-        Double value = Double.valueOf(front);
-        BigDecimal bigDecimal = new BigDecimal(value);
-        String retTxt = bigDecimal.toPlainString() + end;
-        sendSetText(((minus) ? "-" : "") + String.valueOf(retTxt));
-    }
-
-    private class DigitsWatcher implements TextWatcher {
+    private class TagWatcher implements TextWatcher {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
@@ -398,9 +239,13 @@ public class TagInput extends EditText {
                 return;
             }
 
-            String str = s.toString();
-            int start = str.indexOf(dash);
-            int end = str.lastIndexOf(dash);
+            if (!(s.length() == 1 && s.charAt(0) == SHARP)) {
+                doAfterChanged(s);
+            }
+
+            /*String str = s.toString();
+            int start = str.indexOf(SHARP);
+            int end = str.lastIndexOf(SHARP);
 
             if (s.length() > 0 && start > 0 && end == start
                     || start != end) {
@@ -408,29 +253,15 @@ public class TagInput extends EditText {
                 blockSoftKey = true;
                 s.delete(end, s.length());
                 blockSoftKey = false;
-            }
-            doAfterChanged(s);
+            }*/
+
         }
     }
 
-    //BaseInputConnection textFieldInputConnection = new BaseInputConnection(this, true);
-
-
-    private Pattern pattern = Pattern.compile("^[0-9,.-]*$");
-    private InputFilter filterNumberMinus = new InputFilter() {
-        public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart, int dend) {
-            if (!pattern.matcher(source).matches()) {
-                return "";
-            }
-            return null;
-        }
-    };
-
-
-    private static class EditDigitsHandler extends Handler {
+    private static class TagInputHandler extends Handler {
         private final WeakReference<TagInput> weakBody;
 
-        public EditDigitsHandler(TagInput klass) {
+        public TagInputHandler(TagInput klass) {
             weakBody = new WeakReference<>(klass);
         }
 
@@ -439,27 +270,15 @@ public class TagInput extends EditText {
             TagInput klass = weakBody.get();
 
             switch (msg.what) {
-                case BRING_CURSOR_TO_LAST_POSITION:
-                    klass.bringCursorToLastPosition();
-                    break;
-
-                case SET_COMMA:
+                case SET_SHARP:
                     String value = (String) msg.obj;
-                    klass.doSetText(value);
+                    klass.setSharp(value);
                     //sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
-                    break;
-
-                case REMOVE_COMMA:
-                    klass.removeComma();
                     break;
 
                 case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
                     klass.removeFirstCharAtCursorPosition();
                     sendEmptyMessageDelayed(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION, KEY_INTERVAL);
-                    break;
-
-                case HIDE_KEYBOARD:
-                    klass.hideKeyboard();
                     break;
             }
         }
