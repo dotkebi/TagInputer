@@ -34,10 +34,7 @@ public class TagInput extends EditText {
     private int quantityOfPeriodBeforeCursor;
 
     private boolean blockSoftKey;
-    //private boolean blockHardKey;
     private boolean hasFocus;
-    private boolean autoHideKeyboard;
-    private boolean formatWhileInput;
 
     public TagInput(Context context) {
         super(context);
@@ -75,15 +72,15 @@ public class TagInput extends EditText {
         addTextChangedListener(new TagWatcher());
     }
 
-    @Override
+   /* @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
         final int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN && !hasFocus) {
-            /*hasFocus = true;
-            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);*/
+            *//*hasFocus = true;
+            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);*//*
         }
         return super.onTouchEvent(event);
-    }
+    }*/
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
@@ -178,13 +175,14 @@ public class TagInput extends EditText {
             String msg = sb.toString();
             setText(msg);
 
-            Log.w("before", quantityOfPeriodBeforeCursor + " / " + previousCursorPosition);
             previousCursorPosition -= quantityOfPeriodBeforeCursor;
             if (previousCursorPosition < 0) {
                 previousCursorPosition = 0;
+            } else if (previousCursorPosition > msg.length()) {
+                previousCursorPosition = msg.length();
             }
+
             quantityOfPeriodBeforeCursor = 0;
-            Log.w("cursor", "" + previousCursorPosition);
             setSelection(previousCursorPosition);
         } catch (NumberFormatException e) {
             e.printStackTrace();
@@ -218,7 +216,6 @@ public class TagInput extends EditText {
     private void recordCursorPosition(String s) {
         quantityOfPeriodBeforeCursor = 0;
         for (int i = 0; i < getSelectionStart(); i++) {
-        //for (int i = 0; i < s.length(); i++) {
             if (s.charAt(i) == SHARP) {
                 quantityOfPeriodBeforeCursor++;
             }
@@ -239,22 +236,19 @@ public class TagInput extends EditText {
                 return;
             }
 
-            if (!(s.length() == 1 && s.charAt(0) == SHARP)) {
-                doAfterChanged(s);
+            if (s.length() == 1 && s.charAt(0) == SHARP) {
+                return;
             }
 
-            /*String str = s.toString();
-            int start = str.indexOf(SHARP);
-            int end = str.lastIndexOf(SHARP);
+            String str = s.toString();
+            int lastSpace = str.lastIndexOf("# ");
 
-            if (s.length() > 0 && start > 0 && end == start
-                    || start != end) {
-                //textFieldInputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+            if (lastSpace > -1) {
                 blockSoftKey = true;
-                s.delete(end, s.length());
+                s.delete(s.length() - 1, s.length());
                 blockSoftKey = false;
-            }*/
-
+            }
+            doAfterChanged(s);
         }
     }
 
@@ -273,7 +267,6 @@ public class TagInput extends EditText {
                 case SET_SHARP:
                     String value = (String) msg.obj;
                     klass.setSharp(value);
-                    //sendEmptyMessage(BRING_CURSOR_TO_LAST_POSITION);
                     break;
 
                 case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
