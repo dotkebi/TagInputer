@@ -9,7 +9,7 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.github.dotkebi.taginput.MainActivity">
 
-    <com.github.dotkebi.taginput.TagInput
+    <com.github.dotkebi.taginput.TagInputer
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         />

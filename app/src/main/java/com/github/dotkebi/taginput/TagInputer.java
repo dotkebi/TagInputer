@@ -11,7 +11,6 @@ import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
@@ -20,13 +19,13 @@ import java.lang.ref.WeakReference;
  * EditText with TagInput
  * @author by dotkebi@gmail.com on 2016-03-12.
  */
-public class TagInput extends EditText {
+public class TagInputer extends EditText {
     private static final int SET_SHARP = 7462;
     private static final int REMOVE_FIRST_CHAR_AT_CURSOR_POSITION = 7460;
 
     private static final long KEY_INTERVAL = 50;
 
-    private static final char SHARP = '#';
+    private static final String SHARP = "#";
 
     private TagInputHandler handler;
 
@@ -36,12 +35,21 @@ public class TagInput extends EditText {
     private boolean blockSoftKey;
     private boolean hasFocus;
 
-    public TagInput(Context context) {
+    public interface OnInputTagListener {
+        void onInputTagListener(String[] tags);
+    }
+
+    private OnInputTagListener onInputTagListener;
+    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
+        this.onInputTagListener = onInputTagListener;
+    }
+
+    public TagInputer(Context context) {
         super(context);
         init(context);
     }
 
-    public TagInput(Context context, AttributeSet attrs) {
+    public TagInputer(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context, attrs);
     }
@@ -72,6 +80,16 @@ public class TagInput extends EditText {
 
         if (getText().length() == 0) {
             clearText();
+        }
+        if (onInputTagListener == null) {
+            onInputTagListener = new OnInputTagListener() {
+                @Override
+                public void onInputTagListener(String[] tags) {
+                    for (String str : tags) {
+                        Log.d("tags", str);
+                    }
+                }
+            };
         }
         addTextChangedListener(new TagWatcher());
     }
@@ -104,12 +122,12 @@ public class TagInput extends EditText {
         return super.onKeyDown(keyCode, event);
     }
 
-    public void setValue(float value) {
-        doAfterChanged(String.valueOf(value));
+    public String[] getTags() {
+        return getText().toString().replaceAll(SHARP, "").split(" ");
     }
 
-    public void setValue(int value) {
-        doAfterChanged(String.valueOf(value));
+    public void setValue(String value) {
+        doAfterChanged(value);
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -133,7 +151,7 @@ public class TagInput extends EditText {
         }
 
         --previousCursorPosition;
-        if (text.charAt(startPosition) == SHARP) {
+        if (text.charAt(startPosition) == SHARP.charAt(0)) {
             --startPosition;
             //--previousCursorPosition;
         }
@@ -146,10 +164,13 @@ public class TagInput extends EditText {
     }
 
     private void sendSetText(String value) {
-        String str = value.replaceAll(String.valueOf(SHARP), "");
+        String str = value.replaceAll(SHARP, "");
         if (TextUtils.isEmpty(str)) {
             clearText();
             return;
+        }
+        if (onInputTagListener != null) {
+            onInputTagListener.onInputTagListener(str.split(" "));
         }
         handler.sendMessage(Message.obtain(handler, SET_SHARP, str));
     }
@@ -220,7 +241,7 @@ public class TagInput extends EditText {
     private void recordCursorPosition(String s) {
         quantityOfPeriodBeforeCursor = 0;
         for (int i = 0; i < getSelectionStart(); i++) {
-            if (s.charAt(i) == SHARP) {
+            if (s.charAt(i) == SHARP.charAt(0)) {
                 quantityOfPeriodBeforeCursor++;
             }
         }
@@ -240,7 +261,7 @@ public class TagInput extends EditText {
                 return;
             }
 
-            if (s.length() == 1 && s.charAt(0) == SHARP) {
+            if (s.length() == 1 && s.charAt(0) == SHARP.charAt(0)) {
                 return;
             }
 
@@ -260,20 +281,19 @@ public class TagInput extends EditText {
             if (s.charAt(s.length() - 1) == ' ') {
                 doAfterChanged(s);
             }
-
         }
     }
 
     private static class TagInputHandler extends Handler {
-        private final WeakReference<TagInput> weakBody;
+        private final WeakReference<TagInputer> weakBody;
 
-        public TagInputHandler(TagInput klass) {
+        public TagInputHandler(TagInputer klass) {
             weakBody = new WeakReference<>(klass);
         }
 
         @Override
         public void handleMessage(Message msg) {
-            TagInput klass = weakBody.get();
+            TagInputer klass = weakBody.get();
 
             switch (msg.what) {
                 case SET_SHARP:
