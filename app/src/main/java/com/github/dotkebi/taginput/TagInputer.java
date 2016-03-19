@@ -9,7 +9,6 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.EditText;
 
@@ -34,15 +33,7 @@ public class TagInputer extends EditText {
 
     private boolean blockSoftKey;
     private boolean hasFocus;
-
-    public interface OnInputTagListener {
-        void onInputTagListener(String[] tags);
-    }
-
     private OnInputTagListener onInputTagListener;
-    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
-        this.onInputTagListener = onInputTagListener;
-    }
 
     public TagInputer(Context context) {
         super(context);
@@ -52,6 +43,10 @@ public class TagInputer extends EditText {
     public TagInputer(Context context, AttributeSet attrs) {
         super(context, attrs);
         init(context, attrs);
+    }
+
+    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
+        this.onInputTagListener = onInputTagListener;
     }
 
     private void init(Context context, AttributeSet attrs) {
@@ -68,12 +63,10 @@ public class TagInputer extends EditText {
             this.setRawInputType(type);
             this.setTextIsSelectable(true);
         }*/
-
         init(context);
     }
 
     private void init(Context context) {
-        //this.context = context;
         hasFocus = false;
 
         handler = new TagInputHandler(this);
@@ -81,7 +74,7 @@ public class TagInputer extends EditText {
         if (getText().length() == 0) {
             clearText();
         }
-        if (onInputTagListener == null) {
+        /*if (onInputTagListener == null) {
             onInputTagListener = new OnInputTagListener() {
                 @Override
                 public void onInputTagListener(String[] tags) {
@@ -90,19 +83,9 @@ public class TagInputer extends EditText {
                     }
                 }
             };
-        }
+        }*/
         addTextChangedListener(new TagWatcher());
     }
-
-   /* @Override
-    public boolean onTouchEvent(@NonNull MotionEvent event) {
-        final int action = event.getActionMasked();
-        if (action == MotionEvent.ACTION_DOWN && !hasFocus) {
-            *//*hasFocus = true;
-            handler.sendEmptyMessageDelayed(BRING_CURSOR_TO_LAST_POSITION, 100);*//*
-        }
-        return super.onTouchEvent(event);
-    }*/
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
@@ -248,6 +231,35 @@ public class TagInputer extends EditText {
         previousCursorPosition = getSelectionStart();
     }
 
+    public interface OnInputTagListener {
+        void onInputTagListener(String[] tags);
+    }
+
+    private static class TagInputHandler extends Handler {
+        private final WeakReference<TagInputer> weakBody;
+
+        public TagInputHandler(TagInputer klass) {
+            weakBody = new WeakReference<>(klass);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            TagInputer klass = weakBody.get();
+
+            switch (msg.what) {
+                case SET_SHARP:
+                    String value = (String) msg.obj;
+                    klass.setSharp(value);
+                    break;
+
+                case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
+                    klass.removeFirstCharAtCursorPosition();
+                    sendEmptyMessageDelayed(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION, KEY_INTERVAL);
+                    break;
+            }
+        }
+    }
+
     private class TagWatcher implements TextWatcher {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -280,31 +292,6 @@ public class TagInputer extends EditText {
 
             if (s.charAt(s.length() - 1) == ' ') {
                 doAfterChanged(s);
-            }
-        }
-    }
-
-    private static class TagInputHandler extends Handler {
-        private final WeakReference<TagInputer> weakBody;
-
-        public TagInputHandler(TagInputer klass) {
-            weakBody = new WeakReference<>(klass);
-        }
-
-        @Override
-        public void handleMessage(Message msg) {
-            TagInputer klass = weakBody.get();
-
-            switch (msg.what) {
-                case SET_SHARP:
-                    String value = (String) msg.obj;
-                    klass.setSharp(value);
-                    break;
-
-                case REMOVE_FIRST_CHAR_AT_CURSOR_POSITION:
-                    klass.removeFirstCharAtCursorPosition();
-                    sendEmptyMessageDelayed(REMOVE_FIRST_CHAR_AT_CURSOR_POSITION, KEY_INTERVAL);
-                    break;
             }
         }
     }
