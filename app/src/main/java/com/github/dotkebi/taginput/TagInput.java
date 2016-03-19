@@ -69,6 +69,10 @@ public class TagInput extends EditText {
         hasFocus = false;
 
         handler = new TagInputHandler(this);
+
+        if (getText().length() == 0) {
+            clearText();
+        }
         addTextChangedListener(new TagWatcher());
     }
 
@@ -193,11 +197,11 @@ public class TagInput extends EditText {
     }
 
     public void clearText() {
-        if (getText().length() > 0) {
+        //if (getText().length() > 0) {
             getText().clear();
             setText(String.valueOf(SHARP));
             setSelection(1);
-        }
+        //}
     }
 
     private void doAfterChanged(Editable s) {
@@ -248,7 +252,15 @@ public class TagInput extends EditText {
                 s.delete(s.length() - 1, s.length());
                 blockSoftKey = false;
             }
-            doAfterChanged(s);
+
+            if (s.length() < 1) {
+                return;
+            }
+
+            if (s.charAt(s.length() - 1) == ' ') {
+                doAfterChanged(s);
+            }
+
         }
     }
 
