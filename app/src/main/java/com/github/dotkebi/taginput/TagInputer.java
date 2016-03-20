@@ -201,11 +201,9 @@ public class TagInputer extends EditText {
     }
 
     public void clearText() {
-        //if (getText().length() > 0) {
-            getText().clear();
-            setText(String.valueOf(SHARP));
-            setSelection(1);
-        //}
+        getText().clear();
+        setText(String.valueOf(SHARP));
+        setSelection(1);
     }
 
     private void doAfterChanged(Editable s) {
