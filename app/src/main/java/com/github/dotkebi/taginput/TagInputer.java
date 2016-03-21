@@ -276,16 +276,33 @@ public class TagInputer extends EditText {
             }
 
             String str = s.toString();
+            // block duplicated space
             int lastSpace = str.lastIndexOf("# ");
+            // block duplicated #
+            int lastSharp = str.lastIndexOf("##");
 
-            if (lastSpace > -1) {
+            if (lastSpace > -1 || lastSharp > -1) {
                 blockSoftKey = true;
                 s.delete(s.length() - 1, s.length());
                 blockSoftKey = false;
+                return;
             }
 
             if (s.length() < 1) {
                 return;
+            }
+
+            int firstSharp = str.indexOf("#");
+            lastSharp = str.lastIndexOf("#");
+
+            if (lastSharp > -1 && firstSharp != lastSharp) {
+                if (s.charAt(lastSharp - 1) != ' ') {
+                    blockSoftKey = true;
+                    s.delete(s.length() - 1, s.length());
+                    s.append(" " + SHARP);
+                    blockSoftKey = false;
+                    return;
+                }
             }
 
             if (s.charAt(s.length() - 1) == ' ') {
