@@ -146,16 +146,20 @@ public class TagInputer extends EditText {
         sendSetText(message);
     }
 
-    private void sendSetText(String value) {
+    private String sendToListener(String value) {
         String str = value.replaceAll(SHARP, "");
-        if (TextUtils.isEmpty(str)) {
-            clearText();
-            return;
-        }
         if (onInputTagListener != null) {
             onInputTagListener.onInputTagListener(str.split(" "));
         }
-        handler.sendMessage(Message.obtain(handler, SET_SHARP, str));
+        return str;
+    }
+
+    private void sendSetText(String value) {
+        /*if (TextUtils.isEmpty(str)) {
+            clearText();
+            return;
+        }*/
+        handler.sendMessage(Message.obtain(handler, SET_SHARP, sendToListener(value)));
     }
 
     private void setSharp(String value) {
@@ -300,6 +304,7 @@ public class TagInputer extends EditText {
                     blockSoftKey = true;
                     s.delete(s.length() - 1, s.length());
                     s.append(" " + SHARP);
+                    sendToListener(s.toString());
                     blockSoftKey = false;
                     return;
                 }
