@@ -1,4 +1,16 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.novoda.bintray-release'
+publish {
+    userOrg = 'dotkebi'
+    groupId = 'com.github.dotkebi'
+    artifactId = 'taginputer'
+    publishVersion = '0.1.0'
+    desc = 'TagInputer'
+    website = 'https://github.com/dotkebi/TagInputer'
+    issueTracker = "${website}/issues"
+    repository = "${website}.git"
+}
+
 
 android {
     compileSdkVersion 23
@@ -22,4 +34,5 @@ dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     testCompile 'junit:junit:4.12'
     compile 'com.android.support:appcompat-v7:23.2.1'
+
 }
