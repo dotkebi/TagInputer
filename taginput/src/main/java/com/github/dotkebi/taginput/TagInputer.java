@@ -37,12 +37,16 @@ public class TagInputer extends EditText {
 
     public TagInputer(Context context) {
         super(context);
-        init(context);
+        if (!isInEditMode()) {
+            init(context);
+        }
     }
 
     public TagInputer(Context context, AttributeSet attrs) {
         super(context, attrs);
-        init(context, attrs);
+        if (!isInEditMode()) {
+            init(context, attrs);
+        }
     }
 
     public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
@@ -84,7 +88,7 @@ public class TagInputer extends EditText {
                 }
             };
         }*/
-        addTextChangedListener(new TagWatcher());
+        addTextChangedListener(tagWatcher);
     }
 
     @Override
@@ -107,6 +111,10 @@ public class TagInputer extends EditText {
 
     public String[] getTags() {
         return getText().toString().replaceAll(SHARP, "").split(" ");
+    }
+
+    public void addTag(CharSequence charSequence) {
+        append(" #" + charSequence);
     }
 
     public void setValue(String value) {
@@ -163,12 +171,15 @@ public class TagInputer extends EditText {
     }
 
     private void setSharp(String value) {
-        blockSoftKey = true;
-        setCursorVisible(false);
+        if (TextUtils.isEmpty(value)) {
+            clearText();
+            return;
+        }
+
         try {
-            if (TextUtils.isEmpty(value)) {
-                return;
-            }
+            blockSoftKey = true;
+            setCursorVisible(false);
+
             final int index = value.length();
 
             StringBuilder sb = new StringBuilder();
@@ -205,7 +216,7 @@ public class TagInputer extends EditText {
     }
 
     public void clearText() {
-        getText().clear();
+        setText("");
         setText(String.valueOf(SHARP));
         setSelection(1);
     }
@@ -262,7 +273,7 @@ public class TagInputer extends EditText {
         }
     }
 
-    private class TagWatcher implements TextWatcher {
+    TextWatcher tagWatcher = new TextWatcher() {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
@@ -314,5 +325,5 @@ public class TagInputer extends EditText {
                 doAfterChanged(s);
             }
         }
-    }
+    };
 }
