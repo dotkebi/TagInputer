@@ -114,7 +114,9 @@ public class TagInputer extends EditText {
     }
 
     public void addTag(CharSequence charSequence) {
+        blockSoftKey = true;
         append(" #" + charSequence);
+        blockSoftKey = false;
     }
 
     public void setValue(String value) {
@@ -151,22 +153,18 @@ public class TagInputer extends EditText {
         String end = text.substring(endPosition, text.length());
 
         String message = front + end;
-        sendSetText(message);
+        sendToText(message);
     }
 
     private String sendToListener(String value) {
         String str = value.replaceAll(SHARP, "");
-        if (onInputTagListener != null) {
+        if (onInputTagListener != null && !blockSoftKey) {
             onInputTagListener.onInputTagListener(str.split(" "));
         }
         return str;
     }
 
-    private void sendSetText(String value) {
-        /*if (TextUtils.isEmpty(str)) {
-            clearText();
-            return;
-        }*/
+    private void sendToText(String value) {
         handler.sendMessage(Message.obtain(handler, SET_SHARP, sendToListener(value)));
     }
 
@@ -231,7 +229,7 @@ public class TagInputer extends EditText {
         }
 
         recordCursorPosition(source);
-        sendSetText(source);
+        sendToText(source);
     }
 
     private void recordCursorPosition(String s) {
