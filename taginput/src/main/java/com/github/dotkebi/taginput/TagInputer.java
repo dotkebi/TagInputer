@@ -26,13 +26,12 @@ public class TagInputer extends EditText {
 
     private static final String SHARP = "#";
 
-    private TagInputHandler handler;
-
     private int previousCursorPosition;
     private int quantityOfPeriodBeforeCursor;
 
     private boolean blockSoftKey;
     private boolean hasFocus;
+
     private OnInputTagListener onInputTagListener;
 
     public TagInputer(Context context) {
@@ -54,40 +53,15 @@ public class TagInputer extends EditText {
     }
 
     private void init(Context context, AttributeSet attrs) {
-       /* TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
-        if (a != null) {
-            autoHideKeyboard = a.getBoolean(R.styleable.EditDigits_autoHideKeyboard, false);
-            formatWhileInput = a.getBoolean(R.styleable.EditDigits_formatWhileInput, false);
-            a.recycle();
-        }
-
-        if (autoHideKeyboard) {
-            int type = this.getInputType();
-            this.setInputType(InputType.TYPE_NULL);
-            this.setRawInputType(type);
-            this.setTextIsSelectable(true);
-        }*/
         init(context);
     }
 
     private void init(Context context) {
         hasFocus = false;
 
-        handler = new TagInputHandler(this);
-
         if (getText().length() == 0) {
             clearText();
         }
-        /*if (onInputTagListener == null) {
-            onInputTagListener = new OnInputTagListener() {
-                @Override
-                public void onInputTagListener(String[] tags) {
-                    for (String str : tags) {
-                        Log.d("tags", str);
-                    }
-                }
-            };
-        }*/
         addTextChangedListener(tagWatcher);
     }
 
@@ -100,6 +74,15 @@ public class TagInputer extends EditText {
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
 
+    /*@Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DEL) {
+            handler.sendMessage(Message.obtain(handler, REMOVE_FIRST_CHAR_AT_CURSOR_POSITION));
+            return true;
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }*/
+
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DEL) {
@@ -109,18 +92,22 @@ public class TagInputer extends EditText {
         return super.onKeyDown(keyCode, event);
     }
 
+    public String getLastTag() {
+        String[] tags = getTags();
+        return (tags.length > 0) ? tags[tags.length - 1] : "";
+    }
+
     public String[] getTags() {
         return getText().toString().replaceAll(SHARP, "").split(" ");
     }
 
     public void addTag(CharSequence charSequence) {
         blockSoftKey = true;
-        append(" #" + charSequence);
+        if (!TextUtils.isEmpty(getLastTag())) {
+            append(" #");
+        }
+        append(charSequence);
         blockSoftKey = false;
-    }
-
-    public void setValue(String value) {
-        doAfterChanged(value);
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -242,10 +229,7 @@ public class TagInputer extends EditText {
         previousCursorPosition = getSelectionStart();
     }
 
-    public interface OnInputTagListener {
-        void onInputTagListener(String[] tags);
-    }
-
+    private TagInputHandler handler = new TagInputHandler(this);
     private static class TagInputHandler extends Handler {
         private final WeakReference<TagInputer> weakBody;
 
@@ -305,8 +289,8 @@ public class TagInputer extends EditText {
                 return;
             }
 
-            int firstSharp = str.indexOf("#");
-            lastSharp = str.lastIndexOf("#");
+            int firstSharp = str.indexOf(SHARP);
+            lastSharp = str.lastIndexOf(SHARP);
 
             if (lastSharp > -1 && firstSharp != lastSharp) {
                 if (s.charAt(lastSharp - 1) != ' ') {
