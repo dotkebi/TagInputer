@@ -5,11 +5,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
+import com.github.dotkebi.taginput.OnInputTagListener;
 import com.github.dotkebi.taginput.TagInputer;
 
 import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity implements TagInputer.OnInputTagListener {
+public class MainActivity extends AppCompatActivity implements OnInputTagListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
