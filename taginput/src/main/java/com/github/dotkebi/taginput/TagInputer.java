@@ -33,6 +33,9 @@ public class TagInputer extends EditText {
     private boolean hasFocus;
 
     private OnInputTagListener onInputTagListener;
+    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
+        this.onInputTagListener = onInputTagListener;
+    }
 
     public TagInputer(Context context) {
         super(context);
@@ -46,10 +49,6 @@ public class TagInputer extends EditText {
         if (!isInEditMode()) {
             init(context, attrs);
         }
-    }
-
-    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
-        this.onInputTagListener = onInputTagListener;
     }
 
     private void init(Context context, AttributeSet attrs) {
@@ -90,24 +89,6 @@ public class TagInputer extends EditText {
             return true;
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    public String getLastTag() {
-        String[] tags = getTags();
-        return (tags.length > 0) ? tags[tags.length - 1] : "";
-    }
-
-    public String[] getTags() {
-        return getText().toString().replaceAll(SHARP, "").split(" ");
-    }
-
-    public void addTag(CharSequence charSequence) {
-        blockSoftKey = true;
-        if (!TextUtils.isEmpty(getLastTag())) {
-            append(" #");
-        }
-        append(charSequence);
-        blockSoftKey = false;
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -308,4 +289,34 @@ public class TagInputer extends EditText {
             }
         }
     };
+
+    /**
+     * public methods
+     */
+
+    /**
+     * getLastTag
+     */
+    public String getLastTag() {
+        String[] tags = getTags();
+        return (tags.length > 0) ? tags[tags.length - 1] : "";
+    }
+
+    public String[] getTags() {
+        return getText().toString().replaceAll(SHARP, "").split(" ");
+    }
+
+    public CharSequence getTagsWithComma() {
+        return getText().toString().replaceAll(" ", ",");
+    }
+
+    public void addTag(CharSequence charSequence) {
+        blockSoftKey = true;
+        if (!TextUtils.isEmpty(getLastTag())) {
+            append(" #");
+        }
+        append(charSequence);
+        blockSoftKey = false;
+    }
+
 }
