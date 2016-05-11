@@ -1,0 +1,6 @@
+<resources>
+    <declare-styleable name="TagInputer">
+        <attr name="maxCountOfTags" format="integer"/>
+        <attr name="maxLengthOfEachTags" format="integer"/>
+    </declare-styleable>
+</resources>
