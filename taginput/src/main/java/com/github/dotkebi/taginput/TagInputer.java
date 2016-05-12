@@ -307,7 +307,7 @@ public class TagInputer extends EditText {
             }
 
             // limit length of tags
-            String buffer = "";
+            /*String buffer = "";
             boolean flag = false;
             recordCursorPosition(str);
             for (String item : getTags(str)) {
@@ -321,7 +321,7 @@ public class TagInputer extends EditText {
             if (flag) {
                 --previousCursorPosition;
                 sendToText(buffer);
-            }
+            }*/
 
             int firstSharp = str.indexOf(SHARP);
             lastSharpDuplicated = str.lastIndexOf(SHARP);
@@ -387,6 +387,10 @@ public class TagInputer extends EditText {
         return (tags.length > 0) ? tags[tags.length - 1] : "";
     }
 
+    public boolean hasTags() {
+        return getTags().length > 0 && !getLastTag().equals(SHARP);
+    }
+
     public String[] getTags() {
         return getTags(getText().toString());
     }
@@ -401,7 +405,7 @@ public class TagInputer extends EditText {
             return;
         }
         blockSoftKey = true;
-        if (!TextUtils.isEmpty(getLastTag())) {
+        if (!TextUtils.isEmpty(getLastTag().replaceAll(SHARP, ""))) {
             append(" #");
         }
         append(charSequence);

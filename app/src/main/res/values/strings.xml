@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">TagInput</string>
+    <string name="add">ADD TAGS</string>
+    <string name="hasTag">HAS TAG</string>
 </resources>

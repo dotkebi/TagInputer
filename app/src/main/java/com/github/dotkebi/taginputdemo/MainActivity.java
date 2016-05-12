@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import com.github.dotkebi.taginput.OnInputTagListener;
 import com.github.dotkebi.taginput.TagInputer;
@@ -24,6 +25,13 @@ public class MainActivity extends AppCompatActivity implements OnInputTagListene
             @Override
             public void onClick(View v) {
               tagInputer.addTag("Test");
+            }
+        });
+
+        findViewById(R.id.hasTag).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "hasTags : " + tagInputer.hasTags(), Toast.LENGTH_SHORT).show();
             }
         });
     }
