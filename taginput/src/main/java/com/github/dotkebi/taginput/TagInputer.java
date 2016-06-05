@@ -400,7 +400,7 @@ public class TagInputer extends EditText {
     }
 
     public void addTag(CharSequence charSequence) {
-        if (countOfSubString(getText().toString(), SHARP) > maxCountOfTags
+        if (countOfSubString(getText().toString(), SHARP) >= maxCountOfTags
                 && maxCountOfTags > 0) {
             return;
         }
