@@ -400,8 +400,10 @@ public class TagInputer extends EditText {
     }
 
     public void addTag(CharSequence charSequence) {
-        if (countOfSubString(getText().toString(), SHARP) >= maxCountOfTags
-                && maxCountOfTags > 0) {
+        if (maxCountOfTags < 0) {
+            return;
+        }
+        if (countOfSubString(getText().toString(), SHARP) >= maxCountOfTags) {
             return;
         }
         blockSoftKey = true;
