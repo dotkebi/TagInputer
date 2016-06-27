@@ -95,7 +95,8 @@ public class TagInputer extends EditText {
 
     private void init(Context context) {
         if (getText().length() == 0) {
-            clearText();
+            setText("");
+            setSelection(0);
         }
         addTextChangedListener(tagWatcher);
     }
