@@ -94,8 +94,6 @@ public class TagInputer extends EditText {
     }
 
     private void init(Context context) {
-        hasFocus = false;
-
         if (getText().length() == 0) {
             clearText();
         }
@@ -104,9 +102,11 @@ public class TagInputer extends EditText {
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
-        if (!focused && hasFocus) {
-            hasFocus = false;
+        if (focused) {
             doAfterChanged(getText());
+        } else if (getLastTag().equals(SHARP)) {
+            setText("");
+            setSelection(0);
         }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
