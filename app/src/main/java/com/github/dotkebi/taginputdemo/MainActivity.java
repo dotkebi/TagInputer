@@ -6,12 +6,12 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import com.github.dotkebi.taginput.OnInputTagListener;
+import com.github.dotkebi.taginput.OnTagListener;
 import com.github.dotkebi.taginput.TagInputer;
 
 import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity implements OnInputTagListener {
+public class MainActivity extends AppCompatActivity implements OnTagListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity implements OnInputTagListene
         setContentView(R.layout.activity_main);
 
         final TagInputer tagInputer = (TagInputer) findViewById(R.id.tagInputer);
-        tagInputer.setOnInputTagListener(this);
+        tagInputer.setOnTagListener(this);
 
         findViewById(R.id.add).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -36,9 +36,10 @@ public class MainActivity extends AppCompatActivity implements OnInputTagListene
         });
     }
 
+
     @Override
-    public void onInputTagListener(String[] tags) {
-        String message = "Tags : " + Arrays.toString(tags);
+    public void onLastTagListener(View view, String tags) {
+        String message = "Tags : " + tags;
 
         Log.d(getClass().getName(), message);
         //Toast.makeText(this, message, Toast.LENGTH_SHORT).show();

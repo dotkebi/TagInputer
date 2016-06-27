@@ -40,13 +40,13 @@ public class TagInputer extends EditText {
     private boolean blockSoftKey;
     private boolean hasFocus;
 
-    private OnInputTagListener onInputTagListener;
-    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
-        this.onInputTagListener = onInputTagListener;
+    private OnTagListener onTagListener;
+    public void setOnTagListener(OnTagListener onTagListener) {
+        this.onTagListener = onTagListener;
     }
 
-    private OnLastInputTagListener onLastInputTagListener;
-    public void setOnLastInputTagListener(OnLastInputTagListener onLastInputTagListener) {
+    private OnTagListener.OnLastInputTagListener onLastInputTagListener;
+    public void setOnLastInputTagListener(OnTagListener.OnLastInputTagListener onLastInputTagListener) {
         this.onLastInputTagListener = onLastInputTagListener;
     }
 
@@ -163,8 +163,8 @@ public class TagInputer extends EditText {
     }
 
     private String sendToListenerAndRemoveSharp(String value) {
-        if (onInputTagListener != null && !blockSoftKey) {
-            onInputTagListener.onInputTagListener(getTags(value));
+        if (onTagListener != null && !blockSoftKey) {
+            onTagListener.onLastTagListener(this, getLastTag(value));
         }
         if (onLastInputTagListener != null && !blockSoftKey) {
             onLastInputTagListener.onLastInputTagListener(getLastTag(value));
