@@ -1,7 +1,10 @@
 package com.github.dotkebi.taginput;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
@@ -13,6 +16,8 @@ import android.view.KeyEvent;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * EditText with TagInput
@@ -26,65 +31,75 @@ public class TagInputer extends EditText {
 
     private static final String SHARP = "#";
 
-    private TagInputHandler handler;
-
     private int previousCursorPosition;
     private int quantityOfPeriodBeforeCursor;
 
+    private int maxCountOfTags;
+    private int maxLengthOfEachTags;
+
     private boolean blockSoftKey;
     private boolean hasFocus;
+
     private OnInputTagListener onInputTagListener;
-
-    public TagInputer(Context context) {
-        super(context);
-        init(context);
-    }
-
-    public TagInputer(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init(context, attrs);
-    }
-
     public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
         this.onInputTagListener = onInputTagListener;
     }
 
-    private void init(Context context, AttributeSet attrs) {
-       /* TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.EditDigits);
-        if (a != null) {
-            autoHideKeyboard = a.getBoolean(R.styleable.EditDigits_autoHideKeyboard, false);
-            formatWhileInput = a.getBoolean(R.styleable.EditDigits_formatWhileInput, false);
+    private OnLastInputTagListener onLastInputTagListener;
+    public void setOnLastInputTagListener(OnLastInputTagListener onLastInputTagListener) {
+        this.onLastInputTagListener = onLastInputTagListener;
+    }
+
+    public TagInputer(Context context) {
+        super(context);
+        if (!isInEditMode()) {
+            init(context);
+        }
+    }
+
+    public TagInputer(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        if (!isInEditMode()) {
+            init(context, attrs, 0, 0);
+        }
+    }
+
+    public TagInputer(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        if (!isInEditMode()) {
+            init(context, attrs, defStyleAttr, 0);
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    public TagInputer(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        if (!isInEditMode()) {
+            init(context, attrs, defStyleAttr, defStyleRes);
+        }
+    }
+
+    private void init(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        TypedArray a = context.getTheme().obtainStyledAttributes(
+                attrs, R.styleable.TagInputer, defStyleAttr, defStyleRes
+        );
+
+        try {
+            maxCountOfTags = a.getInteger(R.styleable.TagInputer_maxCountOfTags, 0);
+            maxLengthOfEachTags = a.getInteger(R.styleable.TagInputer_maxLengthOfEachTags, 0);
+        } finally {
             a.recycle();
         }
-
-        if (autoHideKeyboard) {
-            int type = this.getInputType();
-            this.setInputType(InputType.TYPE_NULL);
-            this.setRawInputType(type);
-            this.setTextIsSelectable(true);
-        }*/
         init(context);
     }
 
     private void init(Context context) {
         hasFocus = false;
 
-        handler = new TagInputHandler(this);
-
         if (getText().length() == 0) {
             clearText();
         }
-        /*if (onInputTagListener == null) {
-            onInputTagListener = new OnInputTagListener() {
-                @Override
-                public void onInputTagListener(String[] tags) {
-                    for (String str : tags) {
-                        Log.d("tags", str);
-                    }
-                }
-            };
-        }*/
-        addTextChangedListener(new TagWatcher());
+        addTextChangedListener(tagWatcher);
     }
 
     @Override
@@ -96,6 +111,15 @@ public class TagInputer extends EditText {
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
 
+    /*@Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_DEL) {
+            handler.sendMessage(Message.obtain(handler, REMOVE_FIRST_CHAR_AT_CURSOR_POSITION));
+            return true;
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }*/
+
     @Override
     public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_DEL) {
@@ -103,14 +127,6 @@ public class TagInputer extends EditText {
             return true;
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    public String[] getTags() {
-        return getText().toString().replaceAll(SHARP, "").split(" ");
-    }
-
-    public void setValue(String value) {
-        doAfterChanged(value);
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -143,32 +159,33 @@ public class TagInputer extends EditText {
         String end = text.substring(endPosition, text.length());
 
         String message = front + end;
-        sendSetText(message);
+        sendToText(message);
     }
 
-    private String sendToListener(String value) {
-        String str = value.replaceAll(SHARP, "");
-        if (onInputTagListener != null) {
-            onInputTagListener.onInputTagListener(str.split(" "));
+    private String sendToListenerAndRemoveSharp(String value) {
+        if (onInputTagListener != null && !blockSoftKey) {
+            onInputTagListener.onInputTagListener(getTags(value));
         }
-        return str;
+        if (onLastInputTagListener != null && !blockSoftKey) {
+            onLastInputTagListener.onLastInputTagListener(getLastTag(value));
+        }
+        return value.replaceAll(SHARP, "");
     }
 
-    private void sendSetText(String value) {
-        /*if (TextUtils.isEmpty(str)) {
-            clearText();
-            return;
-        }*/
-        handler.sendMessage(Message.obtain(handler, SET_SHARP, sendToListener(value)));
+    private void sendToText(String value) {
+        handler.sendMessage(Message.obtain(handler, SET_SHARP, sendToListenerAndRemoveSharp(value)));
     }
 
     private void setSharp(String value) {
-        blockSoftKey = true;
-        setCursorVisible(false);
+        if (TextUtils.isEmpty(value)) {
+            clearText();
+            return;
+        }
+
         try {
-            if (TextUtils.isEmpty(value)) {
-                return;
-            }
+            blockSoftKey = true;
+            setCursorVisible(false);
+
             final int index = value.length();
 
             StringBuilder sb = new StringBuilder();
@@ -205,7 +222,7 @@ public class TagInputer extends EditText {
     }
 
     public void clearText() {
-        getText().clear();
+        setText("");
         setText(String.valueOf(SHARP));
         setSelection(1);
     }
@@ -215,12 +232,8 @@ public class TagInputer extends EditText {
     }
 
     private void doAfterChanged(String source) {
-        if (blockSoftKey) {
-            return;
-        }
-
         recordCursorPosition(source);
-        sendSetText(source);
+        sendToText(source);
     }
 
     private void recordCursorPosition(String s) {
@@ -233,10 +246,7 @@ public class TagInputer extends EditText {
         previousCursorPosition = getSelectionStart();
     }
 
-    public interface OnInputTagListener {
-        void onInputTagListener(String[] tags);
-    }
-
+    private TagInputHandler handler = new TagInputHandler(this);
     private static class TagInputHandler extends Handler {
         private final WeakReference<TagInputer> weakBody;
 
@@ -262,7 +272,7 @@ public class TagInputer extends EditText {
         }
     }
 
-    private class TagWatcher implements TextWatcher {
+    TextWatcher tagWatcher = new TextWatcher() {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
@@ -283,9 +293,9 @@ public class TagInputer extends EditText {
             // block duplicated space
             int lastSpace = str.lastIndexOf("# ");
             // block duplicated #
-            int lastSharp = str.lastIndexOf("##");
+            int lastSharpDuplicated = str.lastIndexOf("##");
 
-            if (lastSpace > -1 || lastSharp > -1) {
+            if (lastSpace > -1 || lastSharpDuplicated > -1) {
                 blockSoftKey = true;
                 s.delete(s.length() - 1, s.length());
                 blockSoftKey = false;
@@ -296,23 +306,119 @@ public class TagInputer extends EditText {
                 return;
             }
 
-            int firstSharp = str.indexOf("#");
-            lastSharp = str.lastIndexOf("#");
+            // limit length of tags
+            /*String buffer = "";
+            boolean flag = false;
+            recordCursorPosition(str);
+            for (String item : getTags(str)) {
+                if (item.length() - 1 > maxLengthOfEachTags
+                        && maxLengthOfEachTags > 0) {
+                    item = item.substring(0, item.length() - 1);
+                    flag = true;
+                }
+                buffer = addToBuffer(buffer, item);
+            }
+            if (flag) {
+                --previousCursorPosition;
+                sendToText(buffer);
+            }*/
 
-            if (lastSharp > -1 && firstSharp != lastSharp) {
-                if (s.charAt(lastSharp - 1) != ' ') {
+            int firstSharp = str.indexOf(SHARP);
+            lastSharpDuplicated = str.lastIndexOf(SHARP);
+
+            if (lastSharpDuplicated > -1 && firstSharp != lastSharpDuplicated) {
+                if (s.charAt(lastSharpDuplicated - 1) != ' ') {
                     blockSoftKey = true;
                     s.delete(s.length() - 1, s.length());
                     s.append(" " + SHARP);
-                    sendToListener(s.toString());
+                    sendToListenerAndRemoveSharp(s.toString());
                     blockSoftKey = false;
                     return;
                 }
             }
 
+            // limit count of tags
             if (s.charAt(s.length() - 1) == ' ') {
+                if (countOfSubString(str, SHARP) >= maxCountOfTags
+                        && maxCountOfTags > 0) {
+                    blockSoftKey = true;
+                    s.delete(s.length() - 1, s.length());
+                    sendToListenerAndRemoveSharp(s.toString());
+                    blockSoftKey = false;
+                    return;
+                }
                 doAfterChanged(s);
             }
         }
+    };
+
+    private String addToBuffer(String buffer, String item) {
+        return (TextUtils.isEmpty(buffer)) ? buffer + item : buffer + " " + item;
+    }
+
+    private int countOfSubString(String where, String find) {
+        Pattern pattern = Pattern.compile(find);
+        Matcher matcher = pattern.matcher(where);
+        int count = 0;
+        while(matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
+    private String[] getTags(String value) {
+        return value.split(" ");
+    }
+
+    public String getLastTag(String value) {
+        String[] tags = getTags(value);
+        return (tags.length > 0) ? tags[tags.length - 1] : "";
+    }
+
+    /**
+     * public methods
+     */
+
+    /**
+     * getLastTag
+     */
+    public String getLastTag() {
+        String[] tags = getTags();
+        return (tags.length > 0) ? tags[tags.length - 1] : "";
+    }
+
+    public boolean hasTags() {
+        return getTags().length > 0 && !getLastTag().equals(SHARP);
+    }
+
+    public String[] getTags() {
+        return getTags(getText().toString());
+    }
+
+    public CharSequence getTagsWithComma() {
+        return getText().toString().replaceAll(" ", ",");
+    }
+
+    public void addTag(CharSequence charSequence) {
+        if (maxCountOfTags < 0) {
+            return;
+        }
+        if (countOfSubString(getText().toString(), SHARP) >= maxCountOfTags) {
+            return;
+        }
+        blockSoftKey = true;
+        if (!TextUtils.isEmpty(getLastTag().replaceAll(SHARP, ""))) {
+            append(" #");
+        }
+        append(charSequence);
+        blockSoftKey = false;
+    }
+
+    public void setMaxCountOfTags(int maxCountOfTags) {
+        this.maxCountOfTags = maxCountOfTags;
+    }
+
+    public void setMaxLengthOfEachTags(int maxLengthOfEachTags) {
+        this.maxLengthOfEachTags = maxLengthOfEachTags;
     }
 }
