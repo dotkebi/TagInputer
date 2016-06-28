@@ -4,7 +4,7 @@ publish {
     userOrg = 'dotkebi'
     groupId = 'com.github.dotkebi'
     artifactId = 'taginputer'
-    publishVersion = '0.2.2'
+    publishVersion = '0.2.3'
     desc = 'TagInputer'
     website = 'https://github.com/dotkebi/TagInputer'
     issueTracker = "${website}/issues"

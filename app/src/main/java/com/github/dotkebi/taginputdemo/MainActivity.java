@@ -6,12 +6,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import com.github.dotkebi.taginput.OnTagListener;
+import com.github.dotkebi.taginput.OnCurrentTagListener;
 import com.github.dotkebi.taginput.TagInputer;
 
-import java.util.Arrays;
-
-public class MainActivity extends AppCompatActivity implements OnTagListener {
+public class MainActivity extends AppCompatActivity implements OnCurrentTagListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,7 +17,7 @@ public class MainActivity extends AppCompatActivity implements OnTagListener {
         setContentView(R.layout.activity_main);
 
         final TagInputer tagInputer = (TagInputer) findViewById(R.id.tagInputer);
-        tagInputer.setOnTagListener(this);
+        tagInputer.setOnCurrentTagListener(this);
 
         findViewById(R.id.add).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -36,9 +34,8 @@ public class MainActivity extends AppCompatActivity implements OnTagListener {
         });
     }
 
-
     @Override
-    public void onLastTagListener(View view, String tags) {
+    public void onCurrentTagListener(String tags) {
         String message = "Tags : " + tags;
 
         Log.d(getClass().getName(), message);
