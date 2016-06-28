@@ -19,6 +19,9 @@ import android.view.inputmethod.InputConnectionWrapper;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -410,27 +413,27 @@ public class TagInputer extends EditText {
         }
     };
 
-    private String addToBuffer(String buffer, String item) {
+    /*private String addToBuffer(String buffer, String item) {
         return (TextUtils.isEmpty(buffer)) ? buffer + item : buffer + " " + item;
-    }
+    }*/
 
     private int countOfSubString(String where, String find) {
         Pattern pattern = Pattern.compile(find);
         Matcher matcher = pattern.matcher(where);
         int count = 0;
-        while(matcher.find()) {
+        while (matcher.find()) {
             count++;
         }
         return count;
     }
 
-    private String[] getTags(String value) {
-        return value.split(" ");
+    private List<String> getTags(String value) {
+        return new ArrayList<>(Arrays.asList(value.split(" ")));
     }
 
-    public String getLastTag(String value) {
-        String[] tags = getTags(value);
-        return (tags.length > 0) ? tags[tags.length - 1] : "";
+    private String getLastTag(String value) {
+        List<String> tags = getTags(value);
+        return (tags.size() > 0) ? tags.get(tags.size() - 1) : "";
     }
 
     /**
@@ -441,15 +444,14 @@ public class TagInputer extends EditText {
      * getLastTag
      */
     public String getLastTag() {
-        String[] tags = getTags();
-        return (tags.length > 0) ? tags[tags.length - 1] : "";
+        return getLastTag(getText().toString());
     }
 
     public boolean hasTags() {
-        return getTags().length > 0 && !getLastTag().equals(SHARP);
+        return getTags().size() > 0 && !getLastTag().equals(SHARP);
     }
 
-    public String[] getTags() {
+    public List<String> getTags() {
         return getTags(getText().toString());
     }
 
