@@ -7,12 +7,15 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
-import android.support.annotation.NonNull;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputConnectionWrapper;
 import android.widget.EditText;
 
 import java.lang.ref.WeakReference;
@@ -37,17 +40,21 @@ public class TagInputer extends EditText {
     private int maxCountOfTags;
     private int maxLengthOfEachTags;
 
-    private boolean blockSoftKey;
     private boolean hasFocus;
 
-    private OnInputTagListener onInputTagListener;
-    public void setOnInputTagListener(OnInputTagListener onInputTagListener) {
-        this.onInputTagListener = onInputTagListener;
+    private OnCurrentTagListener onCurrentTagListener;
+    public void setOnCurrentTagListener(OnCurrentTagListener onCurrentTagListener) {
+        this.onCurrentTagListener = onCurrentTagListener;
     }
 
     private OnLastInputTagListener onLastInputTagListener;
     public void setOnLastInputTagListener(OnLastInputTagListener onLastInputTagListener) {
         this.onLastInputTagListener = onLastInputTagListener;
+    }
+
+    private OnBackKeyPressed onBackKeyPressed;
+    public void setOnBackKeyPressed(OnBackKeyPressed onBackKeyPressed) {
+        this.onBackKeyPressed = onBackKeyPressed;
     }
 
     public TagInputer(Context context) {
@@ -94,39 +101,66 @@ public class TagInputer extends EditText {
     }
 
     private void init(Context context) {
-        hasFocus = false;
-
         if (getText().length() == 0) {
-            clearText();
+            setText("");
+            setSelection(0);
         }
         addTextChangedListener(tagWatcher);
     }
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
-        if (!focused && hasFocus) {
-            hasFocus = false;
+        if (focused) {
             doAfterChanged(getText());
+        } else if (getLastTag().equals(SHARP)) {
+            setText("");
+            setSelection(0);
         }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
 
-    /*@Override
-    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DEL) {
-            handler.sendMessage(Message.obtain(handler, REMOVE_FIRST_CHAR_AT_CURSOR_POSITION));
+    @Override
+    public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+                && keyCode == KeyEvent.KEYCODE_BACK) {
+            if (onBackKeyPressed != null) {
+                onBackKeyPressed.onBackKeyPressed();
+            }
             return true;
         }
-        return super.onKeyLongPress(keyCode, event);
-    }*/
+        return super.onKeyPreIme(keyCode, event);
+    }
 
     @Override
-    public boolean onKeyDown(int keyCode, @NonNull KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_DEL) {
-            removeFirstCharAtCursorPosition();
-            return true;
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        return new TagInputConnection(super.onCreateInputConnection(outAttrs), true);
+    }
+
+    private class TagInputConnection extends InputConnectionWrapper {
+
+        public TagInputConnection(InputConnection target, boolean mutable) {
+            super(target, mutable);
         }
-        return super.onKeyDown(keyCode, event);
+
+        @Override
+        public boolean sendKeyEvent(KeyEvent event) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN
+                    && event.getKeyCode() == KeyEvent.KEYCODE_DEL) {
+                removeFirstCharAtCursorPosition();
+                return true;
+            }
+            return super.sendKeyEvent(event);
+        }
+
+        @Override
+        public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+            if (beforeLength == 1 && afterLength == 0) {
+                removeFirstCharAtCursorPosition();
+                return true;
+            }
+            return super.deleteSurroundingText(beforeLength, afterLength);
+        }
+
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -163,10 +197,7 @@ public class TagInputer extends EditText {
     }
 
     private String sendToListenerAndRemoveSharp(String value) {
-        if (onInputTagListener != null && !blockSoftKey) {
-            onInputTagListener.onInputTagListener(getTags(value));
-        }
-        if (onLastInputTagListener != null && !blockSoftKey) {
+        if (onLastInputTagListener != null) {
             onLastInputTagListener.onLastInputTagListener(getLastTag(value));
         }
         return value.replaceAll(SHARP, "");
@@ -183,7 +214,7 @@ public class TagInputer extends EditText {
         }
 
         try {
-            blockSoftKey = true;
+            removeTextChangedListener(tagWatcher);
             setCursorVisible(false);
 
             final int index = value.length();
@@ -200,8 +231,8 @@ public class TagInputer extends EditText {
                     ++previousCursorPosition;
                 }
             }
-            clearText();
             String msg = sb.toString();
+            Log.w("test", String.format("(%s)", msg));
             setText(msg);
 
             previousCursorPosition -= quantityOfPeriodBeforeCursor;
@@ -218,13 +249,14 @@ public class TagInputer extends EditText {
             clearText();
         }
         setCursorVisible(true);
-        blockSoftKey = false;
+        addTextChangedListener(tagWatcher);
     }
 
     public void clearText() {
-        setText("");
+        removeTextChangedListener(tagWatcher);
         setText(String.valueOf(SHARP));
         setSelection(1);
+        addTextChangedListener(tagWatcher);
     }
 
     private void doAfterChanged(Editable s) {
@@ -234,6 +266,30 @@ public class TagInputer extends EditText {
     private void doAfterChanged(String source) {
         recordCursorPosition(source);
         sendToText(source);
+    }
+
+    private String getCaret(String source, int position) {
+        if (source.length() == 1) {
+            return source;
+        }
+        int endPositionOfCaret = source.lastIndexOf(" ", position);
+        if (endPositionOfCaret == -1 || endPositionOfCaret < position) {
+            endPositionOfCaret = source.length();
+        }
+
+        int startPositionOfCaret = 0;
+        for (int i = endPositionOfCaret - 1; i > 1; i--) {
+            char ch = source.charAt(i);
+            if (ch == ' ') {
+                startPositionOfCaret = i;
+                break;
+            }
+        }
+        String caret = source.substring(startPositionOfCaret, endPositionOfCaret).trim();
+        if (onCurrentTagListener != null) {
+            onCurrentTagListener.onCurrentTagListener(caret);
+        }
+        return caret;
     }
 
     private void recordCursorPosition(String s) {
@@ -247,6 +303,7 @@ public class TagInputer extends EditText {
     }
 
     private TagInputHandler handler = new TagInputHandler(this);
+
     private static class TagInputHandler extends Handler {
         private final WeakReference<TagInputer> weakBody;
 
@@ -281,10 +338,6 @@ public class TagInputer extends EditText {
 
         @Override
         public void afterTextChanged(Editable s) {
-            if (blockSoftKey) {
-                return;
-            }
-
             if (s.length() == 1 && s.charAt(0) == SHARP.charAt(0)) {
                 return;
             }
@@ -296,9 +349,10 @@ public class TagInputer extends EditText {
             int lastSharpDuplicated = str.lastIndexOf("##");
 
             if (lastSpace > -1 || lastSharpDuplicated > -1) {
-                blockSoftKey = true;
+                removeTextChangedListener(tagWatcher);
                 s.delete(s.length() - 1, s.length());
-                blockSoftKey = false;
+                Log.i("current caret", getCaret(s.toString(), getSelectionStart()));
+                addTextChangedListener(tagWatcher);
                 return;
             }
 
@@ -328,11 +382,12 @@ public class TagInputer extends EditText {
 
             if (lastSharpDuplicated > -1 && firstSharp != lastSharpDuplicated) {
                 if (s.charAt(lastSharpDuplicated - 1) != ' ') {
-                    blockSoftKey = true;
+                    removeTextChangedListener(tagWatcher);
                     s.delete(s.length() - 1, s.length());
                     s.append(" " + SHARP);
                     sendToListenerAndRemoveSharp(s.toString());
-                    blockSoftKey = false;
+                    Log.i("current caret lastSharp", getCaret(s.toString(), getSelectionStart()));
+                    addTextChangedListener(tagWatcher);
                     return;
                 }
             }
@@ -341,14 +396,17 @@ public class TagInputer extends EditText {
             if (s.charAt(s.length() - 1) == ' ') {
                 if (countOfSubString(str, SHARP) >= maxCountOfTags
                         && maxCountOfTags > 0) {
-                    blockSoftKey = true;
+                    removeTextChangedListener(tagWatcher);
                     s.delete(s.length() - 1, s.length());
                     sendToListenerAndRemoveSharp(s.toString());
-                    blockSoftKey = false;
+                    Log.i("current caret limit", getCaret(s.toString(), getSelectionStart()));
+                    addTextChangedListener(tagWatcher);
                     return;
                 }
                 doAfterChanged(s);
             }
+
+            Log.i("current caret ", getCaret(s.toString(), getSelectionStart()));
         }
     };
 
@@ -406,12 +464,12 @@ public class TagInputer extends EditText {
         if (countOfSubString(getText().toString(), SHARP) >= maxCountOfTags) {
             return;
         }
-        blockSoftKey = true;
+        removeTextChangedListener(tagWatcher);
         if (!TextUtils.isEmpty(getLastTag().replaceAll(SHARP, ""))) {
             append(" #");
         }
         append(charSequence);
-        blockSoftKey = false;
+        addTextChangedListener(tagWatcher);
     }
 
     public void setMaxCountOfTags(int maxCountOfTags) {

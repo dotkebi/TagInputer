@@ -18,6 +18,15 @@
         android:layout_height="wrap_content"
         />
 
+    <com.github.dotkebi.taginput.TagInputer
+        android:id="@+id/tagInputer2"
+        app:maxCountOfTags="3"
+        app:maxLengthOfEachTags="5"
+        android:layout_below="@+id/tagInputer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        />
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_alignParentBottom="true"
