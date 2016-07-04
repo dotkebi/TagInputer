@@ -116,8 +116,7 @@ public class TagInputer extends EditText {
         if (focused) {
             doAfterChanged(getText());
         } else if (getLastTag().equals(SHARP)) {
-            setText("");
-            setSelection(0);
+            clearText();
         }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
     }
@@ -163,7 +162,6 @@ public class TagInputer extends EditText {
             }
             return super.deleteSurroundingText(beforeLength, afterLength);
         }
-
     }
 
     private void removeFirstCharAtCursorPosition() {
@@ -175,7 +173,8 @@ public class TagInputer extends EditText {
         }
 
         if (text.length() == 1) {
-            clearText();
+            Log.i("current blank", getCaret(text, getSelectionStart()));
+            clearTextWithSharp();
             return;
         }
 
@@ -196,6 +195,7 @@ public class TagInputer extends EditText {
         String end = text.substring(endPosition, text.length());
 
         String message = front + end;
+        Log.i("current caret", getCaret(message, previousCursorPosition));
         sendToText(message);
     }
 
@@ -212,7 +212,7 @@ public class TagInputer extends EditText {
 
     private void setSharp(String value) {
         if (TextUtils.isEmpty(value)) {
-            clearText();
+            clearTextWithSharp();
             return;
         }
 
@@ -249,16 +249,23 @@ public class TagInputer extends EditText {
             setSelection(previousCursorPosition);
         } catch (NumberFormatException e) {
             e.printStackTrace();
-            clearText();
+            clearTextWithSharp();
         }
         setCursorVisible(true);
         addTextChangedListener(tagWatcher);
     }
 
-    public void clearText() {
+    public void clearTextWithSharp() {
         removeTextChangedListener(tagWatcher);
         setText(String.valueOf(SHARP));
         setSelection(1);
+        addTextChangedListener(tagWatcher);
+    }
+
+    public void clearText() {
+        removeTextChangedListener(tagWatcher);
+        setText("");
+        setSelection(0);
         addTextChangedListener(tagWatcher);
     }
 
@@ -273,7 +280,9 @@ public class TagInputer extends EditText {
 
     private String getCaret(String source, int position) {
         if (source.length() == 1) {
-            return source;
+            if (onCurrentTagListener != null) {
+                onCurrentTagListener.onCurrentTagListener("");
+            }
         }
         int endPositionOfCaret = source.lastIndexOf(" ", position);
         if (endPositionOfCaret == -1 || endPositionOfCaret < position) {
@@ -342,6 +351,7 @@ public class TagInputer extends EditText {
         @Override
         public void afterTextChanged(Editable s) {
             if (s.length() == 1 && s.charAt(0) == SHARP.charAt(0)) {
+                Log.i("current blank", getCaret(s.toString(), getSelectionStart()));
                 return;
             }
 
