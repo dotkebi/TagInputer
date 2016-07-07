@@ -21,7 +21,9 @@ import android.widget.EditText;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,6 +46,8 @@ public class TagInputer extends EditText {
     private int maxLengthOfEachTags;
 
     private boolean hasFocus;
+
+    private Set<String> tags = new HashSet<>();
 
     private OnCurrentTagListener onCurrentTagListener;
     public void setOnCurrentTagListener(OnCurrentTagListener onCurrentTagListener) {
